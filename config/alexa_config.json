@@ -1,0 +1,10 @@
+ {
+    "authDelegate":{
+        "productId":"TopqizhiAlexa",
+        "deviceSerialNumber":"1234567",
+        "clientId":"amzn1.application-oa2-client.b5989b4f46964b7d84d0f51d71c69bf1",
+        "clientSecret":"c1be58b6a36d787935ae363e2368f8cff5ca84436cb7531b7a04ffdd2500ad90",
+	"token":"",
+        "refreshToken":""
+     }
+}
