@@ -1,0 +1,13 @@
+prefix=/home/fanshuming/alexa_c_realize/alexa_c/build_tar/data2/mips/libssl102
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+enginesdir=${libdir}/engines
+
+Name: OpenSSL-libcrypto
+Description: OpenSSL cryptography library
+Version: 1.0.2l
+Requires: 
+Libs: -L${libdir} -lcrypto
+Libs.private: -ldl
+Cflags: -I${includedir} 
