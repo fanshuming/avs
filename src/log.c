@@ -8,13 +8,12 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <time.h>
-#include <curl/curl.h>
+#include "curl.h"
 
 #include "crc.h"
 #include "ssap_protocol.h"
 #include "string_convert.h"
 #include "spim.h"
-#include "queue.h"
 #include "log.h"
 
 #define LOG_FILE_LENTHG_MAX (1*1024)

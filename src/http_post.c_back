@@ -1,0 +1,45 @@
+#include <stdio.h>
+#include "curl.h"
+ 
+int main(void)
+{
+  CURL *curl;
+  CURLcode res;
+ 
+  /* In windows, this will init the winsock stuff */ 
+  curl_global_init(CURL_GLOBAL_ALL);
+ 
+  /* get a curl handle */ 
+  curl = curl_easy_init();
+
+
+        /* set the opt */
+  curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+  curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0 );
+  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+  curl_easy_setopt(curl, CURLOPT_CAINFO, "/tmp/cacert.pem");
+
+  if(curl) {
+    /* First set the URL that is about to receive our POST. This URL can
+       just as well be a https:// URL if that is what should receive the
+       data. */ 
+
+
+
+    curl_easy_setopt(curl, CURLOPT_URL, "https://api.amazon.com/auth/o2/token");
+    /* Now specify the POST data */ 
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "client_id=amzn1.application-oa2-client.b5989b4f46964b7d84d0f51d71c69bf1&client_secret=c1be58b6a36d787935ae363e2368f8cff5ca84436cb7531b7a04ffdd2500ad90&refresh_token=Atzr|IwEBIND4sSEUZo4nYD5CRWVa5WjKzh_S5pKxPh4YI2Qz1e8dKuM8HgSngFMY5LcF7-KYLdiqgRKTesfjXAvdWMXkNMRDW1L6BV_xGM3H2UgNDzqE55vZUGfwvnKDzmmKl5Y9JS_inAUAkXVRcct_wV_Tg6Q-j_bgvoGUVkELGL-uH98YtWwmw5ffG8db4kggkaX9LY497lD-AggIgXwM86_DcUHFJ9R_GlgKtY7u6DA-MqQpRN5rFExHsWpeU7ePJtQN-mkxRdOBbSQtzxtk0uQOCfRdYvSMszai0mXPCjic3RXkvu0VK-a6zb8SydTEogzHa25_pWllEwE-yBLYMafUT3vNubDJQ_GYiXvdXSnIEYekevZms6S99tCeT0JCtNYmHucgSUU1kdiI1C9vljguNrqsOXLWGkzar7UPJUzOnMcupKW2dM2RmysWbB4Fjp5Y1Nn77dsZ5mxPiIVu-AmhAc5rzuidaKmuzUWQV671if3rhUID1tv3EyLjsHQZwhJ2V81aF-mPfsQRmNG---89Z7KZGPwVI8asnntmXd4PM178ik2KunpZVQO9vCmiLckLQbDhBDjLGoY5UeE4ZyaXHXfQ&grant_type=refresh_token&project=curl");
+ 
+    /* Perform the request, res will get the return code */ 
+    res = curl_easy_perform(curl);
+    /* Check for errors */ 
+    if(res != CURLE_OK)
+      fprintf(stderr, "curl_easy_perform() failed: %s\n",
+              curl_easy_strerror(res));
+ 
+    /* always cleanup */ 
+    curl_easy_cleanup(curl);
+  }
+  curl_global_cleanup();
+  return 0;
+}

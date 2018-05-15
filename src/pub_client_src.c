@@ -309,6 +309,7 @@ void send_net_connect_signal()
 }
 
 //int mqtt_pub_thread(void)
+/*
 int mqtt_pub(void)
 {
 	uint32_t pub_count = 0;
@@ -322,3 +323,4 @@ int mqtt_pub(void)
 		sleep(1);
 	}
 }
+*/

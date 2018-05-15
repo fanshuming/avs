@@ -1,4 +1,4 @@
-.PHONY: all clean
+.PHONY: clean
   
 CROSS_COMPILE=/home/fanshuming/qz_proj/qz_mtk_openwrt/openwrt/staging_dir/toolchain-mipsel_24kec+dsp_gcc-4.8-linaro_uClibc-0.9.33.2/bin/
 CC = mipsel-openwrt-linux-gcc
@@ -14,21 +14,31 @@ CFLAGS_RD = -I /home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips
 CFLAGS_ALEXA = -I /home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/libcurl/include/curl
 LDFLAGS_ALEXA = -L/home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/libcurl/lib -lcurl -L/home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/libng/lib -lnghttp2 -lm -L/home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/zlib/lib/ -lz -L/home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/libssl102/lib -lcrypto -L/home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/libssl102/lib/ -lssl
 
-LDFLAGS_MOSQ = -L/home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/mosquitto-1.4.10/lib -lmosquitto
+LDFLAGS_MOSQ = -L/home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/mosquitto-1.4.10/lib -lmosquitto  -L ./lib -lcares
 
 
-all: alexa
+TARGET=alexa
+BIN_TARGET=bin/alexa
 
-alexa: src/main.c src/spim.c src/wakeup.c src/utils.c src/record.c src/alexa.c src/cJSON.c src/ssap_protocol.c src/sub_client.c src/pub_client_src.c src/client_shared.c
-	${CC} $^ ${CFLAGS} ${CFLAGS_RD} ${CFLAGS_ALEXA} ${LDFLAGS_ALEXA} ${LDFLAGS_RD} ${LDFLAGS_MOSQ} ${LDFLAGS} -o $@
+OBJECTS := $(patsubst %.c,%.o,$(wildcard ./src/*.c))
 
-install : all
+$(TARGET) : $(OBJECTS)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS) $(LDFLAGS_RD) $(LDFLAGS_ALEXA) $(LDFLAGS_MOSQ)
+
+%.o : %.c
+	$(CC) -c $(CFLAGS) $(CFLAGS_RD) $(CFLAGS_ALEXA) $< -o $@
+
+
+#alexa: src/main.c src/spim.c src/wakeup.c src/utils.c src/record.c src/alexa.c src/cJSON.c src/ssap_protocol.c src/sub_client.c src/pub_client_src.c src/client_shared.c src/spi_communicate.c src/crc.c src/http_avs.c
+#	${CC} $^ ${CFLAGS} ${CFLAGS_RD} ${CFLAGS_ALEXA} ${LDFLAGS_ALEXA} ${LDFLAGS_RD} ${LDFLAGS_MOSQ} ${LDFLAGS} -o $@
+
+install : $(TARGET)
 	$(INSTALL) -d ./bin
-	echo "$(INSTALL) -s --strip-program=${CROSS_COMPILE}${STRIP} alexa bin/alexa"
-	$(INSTALL) -s --strip-program=${CROSS_COMPILE}${STRIP} alexa bin/alexa
+	echo "$(INSTALL) -s --strip-program=${CROSS_COMPILE}${STRIP} $(TARGET) $(BIN_TARGET)"
+	$(INSTALL) -s --strip-program=${CROSS_COMPILE}${STRIP} $(TARGET) $(BIN_TARGET)
 
 uninstall :
 	-rm -f bin/alexa
 
 clean:
-	rm -f alexa bin/alexa
+	@rm -f *.o $(TARGET) $(BIN_TARGET)

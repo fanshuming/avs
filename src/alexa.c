@@ -7,6 +7,8 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include "http_avs.h"
+
 #define HANDLECOUNT  3
 #define DOWN_HANDLE  0
 #define PING_HANDLE  1
@@ -32,8 +34,9 @@ typedef enum NET_STATE_T{
 
 //char *atoken = "Atza|IwEBIC8buqMgu68FRve-HPjlLifjHsNUwBHISLuZPrxC9H2jHNqJxIyWMWrMv7RLAIuNwle4gJWuVKuRLk08ZezdMYoi1oHSGuw-gWp3f8jXtjqLepbBLNB_FbPlMr2axZ3CEzF4DzuMmrwRWJ2Uk4abOXoucirw1ZnAyD7qxkHq1rF-D0k8sHwXSTkFY-OXc11lW_zgDiDXVJFddYH3FwXLeFhEf7Svo-WNAtGTEqniABtkinStETVIo9SsJQR4EKkkTLiXXGCS1qoMyjNNrpvgrtAs7d22LwWd7YtaW5l1LW-OFbtLIme5urD0lcpY4-aNRuiUf6ZPqOrQkqUMPepXLbJbhGkmhaRmIg9vlxalEyxwDZ1-o14I1hgmoTntcHHaIvX1psKKJdHW1mdux5TlHRNK0Ae9CGk73L6pchzILHfws7B3pgRSPLH2SJJAMGLIxktlNclNkvyhV5ww2hg32-I6c_437wsnbGXmbN-VN7NspLzd__UCscaVvU4aAqzq9lYCo0ny8GqKFUChN1z4lZxgUB2uv7AzLHFXsuBUyl7JWw";
 
-char * atoken = "Atza|IwEBIM8IuwKa-KxYU6Rbz9Q2uyANFqfJArsuHLqZBBtZ4fZYkZz0QMcLpTc31_5ZPw1OLBTPIF0I-KVki4pj5JtKULXFyx44IZyBVBV_vX9xuP8snoBc3ddd7jmhhbHPUugvFXrsqSdD31oJEAictukBzLDY114PjgTYvGJOH2_1eTIQ_o7rv2qI0dwp3COeKFe7-henMFtvC5-r260RJp14F7Uito_4hUQQmgAhTaPQDxMchbjHly5eIuU3vLt8T6rEFj9M7YSRyEvCnjHtq9gQyqCgLNha_Q0sSS6lgfekYnL9JO5TDyhy6xQurWv9gFYW2QG6duNhLdam_BIWsoJHfOKXSux59-iyT2fpCIdNl2uuEtEiGf7W32zz6GjdvFlP_8AjK7tMksv8mhnILOb7x1b40EZTkjmger38tPQ4k7pBsYdcinxUz2eh9f04LNu0Pwfd2fjjYawqaj6Mp0Y0xjVsdVBIhNT84Xed2-ZB0eldUksVA5OfwwCxBPXk9v9BkTDPpDUf_ufxfKi-NfhxWcNLOWlzSy-9dI1SmPbaJOBWL-h_vpUnSuWknTVgB6DCohnB6HeuCCwutoTjLs9voyJ-lzaUqGyDPPr8IYzleRtOcQ";
+//char * atoken = "Atza|IwEBIM8IuwKa-KxYU6Rbz9Q2uyANFqfJArsuHLqZBBtZ4fZYkZz0QMcLpTc31_5ZPw1OLBTPIF0I-KVki4pj5JtKULXFyx44IZyBVBV_vX9xuP8snoBc3ddd7jmhhbHPUugvFXrsqSdD31oJEAictukBzLDY114PjgTYvGJOH2_1eTIQ_o7rv2qI0dwp3COeKFe7-henMFtvC5-r260RJp14F7Uito_4hUQQmgAhTaPQDxMchbjHly5eIuU3vLt8T6rEFj9M7YSRyEvCnjHtq9gQyqCgLNha_Q0sSS6lgfekYnL9JO5TDyhy6xQurWv9gFYW2QG6duNhLdam_BIWsoJHfOKXSux59-iyT2fpCIdNl2uuEtEiGf7W32zz6GjdvFlP_8AjK7tMksv8mhnILOb7x1b40EZTkjmger38tPQ4k7pBsYdcinxUz2eh9f04LNu0Pwfd2fjjYawqaj6Mp0Y0xjVsdVBIhNT84Xed2-ZB0eldUksVA5OfwwCxBPXk9v9BkTDPpDUf_ufxfKi-NfhxWcNLOWlzSy-9dI1SmPbaJOBWL-h_vpUnSuWknTVgB6DCohnB6HeuCCwutoTjLs9voyJ-lzaUqGyDPPr8IYzleRtOcQ";
 
+char * atoken = NULL;
 static struct MemoryStruct chunk;
 static unsigned int data = 100;
 static FILE *saveHeadFile = NULL;
@@ -370,6 +373,7 @@ static int is_rcv_ok(void)
 void * upload_data_to_avs_thread(void * status)
 {
 	int ret = 0;
+	char token[1024];
 
 	/* the curl variable */
 	CURL *handles[HANDLECOUNT];
@@ -379,6 +383,7 @@ void * upload_data_to_avs_thread(void * status)
 	CURLMsg *msg; /* for picking up messages with the transfer status */
 	int msgs_left; /* how many messages are left */
 	
+	//token = (char *)malloc(1024);
 	char Authorization[1024] = "Authorization:Bearer ";
 	
 	/* for the event variable */
@@ -390,12 +395,18 @@ void * upload_data_to_avs_thread(void * status)
 
 	printf("1 curl_ver: %s\n", curl_version());
 	/* start */
-	strcat( Authorization, atoken );
-	printf( "%s\nstarting ...\n", Authorization );
+	get_access_token_file_from_avs();
+        get_token_from_file(token,"token.txt");
+	//printf("\ntokenStr:%s\n", token);
+
+	//strcat( Authorization, atoken );
+	strcat( Authorization, token);
+	printf( "\n%s\nstarting ...\n", Authorization );
 
 
 	/* initialize curl */
 	/* init a multi stack */
+	
 	multi_handle = curl_multi_init();
 	/* Allocate one CURL handle per transfer */
 	for(i=0; i<HANDLECOUNT; i++){
