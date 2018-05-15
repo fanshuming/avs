@@ -41,4 +41,4 @@ uninstall :
 	-rm -f bin/alexa
 
 clean:
-	@rm -f *.o $(TARGET) $(BIN_TARGET)
+	@rm -f ./src/*.o $(TARGET) $(BIN_TARGET)
