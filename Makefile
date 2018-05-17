@@ -9,8 +9,8 @@ CC = mipsel-openwrt-linux-gcc
 CFLAGS = -I ./include
 LDFLAGS = -lpthread
 
-INSTALL=install
-STRIP=mipsel-openwrt-linux-uclibc-strip
+INSTALL = install
+STRIP = mipsel-openwrt-linux-uclibc-strip
 
 LDFLAGS_RD = -L $(CURRENT_DIR)/third_party/mips/alsa_lib -lasound 
 CFLAGS_RD = -I $(CURRENT_DIR)/third_party/mips/alsa_lib/include -I $(CURRENT_DIR)/third_party/mips/alsa-utils/include
@@ -21,8 +21,8 @@ LDFLAGS_ALEXA = -L $(CURRENT_DIR)/third_party/mips/libcurl/lib -lcurl -L $(CURRE
 LDFLAGS_MOSQ = -L $(CURRENT_DIR)/third_party/mips/mosquitto-1.4.10/lib -lmosquitto  -L ./lib -lcares
 
 
-TARGET=alexa
-BIN_TARGET=bin/alexa
+TARGET = alexa
+BIN_TARGET = bin/alexa
 
 OBJECTS := $(patsubst %.c,%.o,$(wildcard ./src/*.c))
 
@@ -38,7 +38,6 @@ $(TARGET) : $(OBJECTS)
 
 install : $(TARGET)
 	$(INSTALL) -d ./bin
-	echo "$(INSTALL) -s --strip-program=${STRIP} $(TARGET) $(BIN_TARGET)"
 	$(INSTALL) -s --strip-program=${STRIP} $(TARGET) $(BIN_TARGET)
 
 uninstall :
