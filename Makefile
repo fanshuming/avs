@@ -42,7 +42,7 @@ install : $(TARGET)
 	$(INSTALL) -s --strip-program=${STRIP} $(TARGET) $(BIN_TARGET)
 
 uninstall :
-	-rm -f bin/alexa
+	-rm -f $(BIN_TARGET)
 
 clean:
 	@rm -f ./src/*.o $(TARGET) $(BIN_TARGET)
