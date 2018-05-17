@@ -1,6 +1,10 @@
 .PHONY: clean
   
-CROSS_COMPILE=/home/fanshuming/qz_proj/qz_mtk_openwrt/openwrt/staging_dir/toolchain-mipsel_24kec+dsp_gcc-4.8-linaro_uClibc-0.9.33.2/bin/
+CURRENT_DIR = $(shell pwd)
+
+#toolchain path
+#CROSS_COMPILE=$(HOME)/openwrt/staging_dir/toolchain-mipsel_24kec+dsp_gcc-4.8-linaro_uClibc-0.9.33.2/bin/
+
 CC = mipsel-openwrt-linux-gcc
 CFLAGS = -I ./include
 LDFLAGS = -lpthread
@@ -8,13 +12,13 @@ LDFLAGS = -lpthread
 INSTALL=install
 STRIP=mipsel-openwrt-linux-uclibc-strip
 
-LDFLAGS_RD = -L /home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/alsa_lib -lasound 
-CFLAGS_RD = -I /home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/alsa_lib/include -I /home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/alsa-utils/include
+LDFLAGS_RD = -L $(CURRENT_DIR)/third_party/mips/alsa_lib -lasound 
+CFLAGS_RD = -I $(CURRENT_DIR)/third_party/mips/alsa_lib/include -I $(CURRENT_DIR)/third_party/mips/alsa-utils/include
 
-CFLAGS_ALEXA = -I /home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/libcurl/include/curl
-LDFLAGS_ALEXA = -L/home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/libcurl/lib -lcurl -L/home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/libng/lib -lnghttp2 -lm -L/home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/zlib/lib/ -lz -L/home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/libssl102/lib -lcrypto -L/home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/libssl102/lib/ -lssl
+CFLAGS_ALEXA = -I $(CURRENT_DIR)/third_party/mips/libcurl/include/curl
+LDFLAGS_ALEXA = -L $(CURRENT_DIR)/third_party/mips/libcurl/lib -lcurl -L $(CURRENT_DIR)/third_party/mips/libng/lib -lnghttp2 -lm -L $(CURRENT_DIR)/third_party/mips/zlib/lib/ -lz -L $(CURRENT_DIR)/third_party/mips/libssl102/lib -lcrypto -L $(CURRENT_DIR)/third_party/mips/libssl102/lib/ -lssl
 
-LDFLAGS_MOSQ = -L/home/fanshuming/alexa_c_realize/alexa_c_realize/third_party/mips/mosquitto-1.4.10/lib -lmosquitto  -L ./lib -lcares
+LDFLAGS_MOSQ = -L $(CURRENT_DIR)/third_party/mips/mosquitto-1.4.10/lib -lmosquitto  -L ./lib -lcares
 
 
 TARGET=alexa
@@ -34,8 +38,8 @@ $(TARGET) : $(OBJECTS)
 
 install : $(TARGET)
 	$(INSTALL) -d ./bin
-	echo "$(INSTALL) -s --strip-program=${CROSS_COMPILE}${STRIP} $(TARGET) $(BIN_TARGET)"
-	$(INSTALL) -s --strip-program=${CROSS_COMPILE}${STRIP} $(TARGET) $(BIN_TARGET)
+	echo "$(INSTALL) -s --strip-program=${STRIP} $(TARGET) $(BIN_TARGET)"
+	$(INSTALL) -s --strip-program=${STRIP} $(TARGET) $(BIN_TARGET)
 
 uninstall :
 	-rm -f bin/alexa
