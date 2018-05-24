@@ -8,6 +8,9 @@
 #include <unistd.h>
 
 #include "http_avs.h"
+#include "log.h"
+
+#include "global.h"
 
 #define HANDLECOUNT  3
 #define DOWN_HANDLE  0
@@ -19,6 +22,8 @@
 #define BODY_FILE_NAME       "./BodyFile"
 #define DEL_HTTPHEAD_EXPECT  "Expect:"
 #define DEL_HTTPHEAD_ACCEPT  "Accept:"
+
+unsigned int stopCap = 0;
 
 struct MemoryStruct {
 	char *memory;
@@ -45,15 +50,17 @@ static FILE *uploadFile = NULL;
 static net_state_t netState;
 static unsigned char count = 0;
 
+int * pFD = NULL;
+
 static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {  
 	size_t realsize = size * nmemb;
 	struct MemoryStruct *mem = (struct MemoryStruct *)userp;
-	
+	stopCap = 1;	
 	mem->memory = realloc(mem->memory, mem->size + realsize + 1);
 	if(mem->memory == NULL) {
 		/* out of memory! */
-		printf("not enough memory (realloc returned NULL)\n");
+		LOGE("not enough memory (realloc returned NULL)\n");
 		return 0;
 	}
 	
@@ -61,21 +68,30 @@ static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, voi
 	mem->size += realsize;
 	mem->memory[mem->size] = 0;
 
-//	printf("%s : size %d \n %s \n", __FUNCTION__, realsize, (char *)contents);
+	LOGD("realsize, size: %d \n  contents: %s \n", realsize, (char *)contents);
 	return realsize;
 }
 
 size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)   
 {
-	printf("write data begin...\n");
-    int written = fwrite(ptr, size, nmemb, (FILE *)stream);
-    fflush((FILE *)stream);
-    return written;
+	LOGD("write data begin...\n");
+    	int written = fwrite(ptr, size, nmemb, (FILE *)stream);
+    	fflush((FILE *)stream);
+    	return written;
 }
 size_t readFileFunc(char *buffer, size_t size, size_t nitems, void *instream)
 {
-	printf("begin freadfunc ... \n");
-	int readSize = fread( buffer, size, nitems, (FILE *)instream );
+	LOGD("begin freadfunc size:%d, nitems:%d ... \n", size, nitems);
+
+	/*
+	if(stopCap == 1)
+	{
+		return 0;
+	}
+	*/
+
+	//int readSize = fread( buffer, size, nitems, (FILE *)instream );
+	int readSize = read(*pFD, buffer, nitems);
 
 	return readSize;
 }
@@ -97,7 +113,7 @@ static void curl_ping_cfg(CURL *curl, struct curl_slist *head, char *auth)
 	head = curl_slist_append(head , "Host: avs-alexa-na.amazon.com");
 	res = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, head);
 	if (res != CURLE_OK){
-		printf("%s: curl_easy_setopt failed: %s\n", __FUNCTION__, curl_easy_strerror(res));
+		LOGD("%s: curl_easy_setopt failed: %s\n", __FUNCTION__, curl_easy_strerror(res));
 	}
 
 	/* set the url */
@@ -110,10 +126,11 @@ static void curl_ping_cfg(CURL *curl, struct curl_slist *head, char *auth)
 
 static void curl_sync_state(CURL *curl, char *strJSONout,
 								  struct curl_httppost *postFirst,
-								  struct curl_httppost *postLast)
+								  struct curl_httppost *postLast,
+									void * pipFD)
 {
 	char mid[50] = {0};
-	cJSON *root, *context, *event, *header, *payload, *nonname, *tmpJson;
+	cJSON *root, *context, *event, *header, *payload, *nonname, *tmpJson, *initiator;
 
 	uploadFile   = fopen( UPLOAD_FILE_NAME, "rb" );
 	saveHeadFile = fopen( HEAD_FILE_NAME, "w+" );
@@ -165,11 +182,13 @@ static void curl_sync_state(CURL *curl, char *strJSONout,
 	data++;
 	cJSON_AddStringToObject(header, "messageId", mid);
 	cJSON_AddItemToObject(event, "payload", payload = cJSON_CreateObject());
+	//cJSON_AddItemToObject(payload, "initiator", initiator = cJSON_CreateObject());
+	//cJSON_AddStringToObject(initiator, "type", "WAKEWORD");
 
 	strJSONout = cJSON_Print(root); 
 	cJSON_Delete(root);
 
-	printf("%s\n%ld\n", strJSONout, strlen(strJSONout));
+	LOGD("%s\n%ld\n", strJSONout, strlen(strJSONout));
 
 	/*        curl set the formadd      */
 	/*         JSON          */
@@ -192,11 +211,12 @@ static void curl_sync_state(CURL *curl, char *strJSONout,
 
 static void curl_send_audio_content(CURL *curl, char *strJSONout,
 								struct curl_httppost *postFirst,
-								struct curl_httppost *postLast)
+								struct curl_httppost *postLast,
+								void * pipFD)
 {
 //	CURLcode res;
 	
-	cJSON *root, *context, *event, *header, *payload, *nonname, *tmpJson;
+	cJSON *root, *context, *event, *header, *payload, *nonname, *tmpJson, *initiator;
 	char mid[50] = {0};
 	char did[50] = {0};
 
@@ -207,7 +227,7 @@ static void curl_send_audio_content(CURL *curl, char *strJSONout,
 	fseek( uploadFile, 0, SEEK_END);
 	long uploadFileSize = ftell( uploadFile );
 	fseek( uploadFile, 0, SEEK_SET);
-	printf("uploadFileSize = %ld\n", uploadFileSize);
+	LOGD("uploadFileSize = %ld\n", uploadFileSize);
 	/* set the json */
 	root=cJSON_CreateObject();
 				//=======context===========//
@@ -257,14 +277,17 @@ static void curl_send_audio_content(CURL *curl, char *strJSONout,
 	data++;
 	cJSON_AddStringToObject(header, "dialogRequestId", did );//"dialogRequestId-123"
 	cJSON_AddItemToObject(event, "payload", payload = cJSON_CreateObject());
-	cJSON_AddStringToObject(payload, "profile", "CLOSE_TALK");
+	//cJSON_AddStringToObject(payload, "profile", "CLOSE_TALK");
+	cJSON_AddStringToObject(payload, "profile", "NEAR_FIELD");
 	cJSON_AddStringToObject(payload, "format", "AUDIO_L16_RATE_16000_CHANNELS_1");
+	cJSON_AddItemToObject(payload, "initiator", initiator = cJSON_CreateObject());
+	cJSON_AddStringToObject(initiator, "type", "TAP");
 
 				//===========Tail===============//
 	strJSONout = cJSON_Print(root); 
 	cJSON_Delete(root);
 	
-	printf("%s\n%ld\n", strJSONout, strlen(strJSONout));
+	LOGD("%s\n%ld\n", strJSONout, strlen(strJSONout));
 
 	/* formadd */
 
@@ -279,7 +302,8 @@ static void curl_send_audio_content(CURL *curl, char *strJSONout,
 	curl_formadd(&postFirst, &postLast,
 				CURLFORM_COPYNAME, "audio",
 				CURLFORM_STREAM, uploadFile,
-				CURLFORM_CONTENTSLENGTH, uploadFileSize,
+				//CURLFORM_STREAM, (*(int *)pipFD),
+				//CURLFORM_CONTENTSLENGTH, uploadFileSize,
 				CURLFORM_CONTENTTYPE, "application/octet-stream", //"audio/L16; rate=16000; channels=1",
 				CURLFORM_END);
 
@@ -335,7 +359,7 @@ static void curl_downchannel_cfg(CURL *curl, struct curl_slist *head, char *auth
 	head = curl_slist_append(head , "Host: avs-alexa-na.amazon.com");
 	res = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, head);
 	if (res != CURLE_OK){
-		printf("%s: curl_easy_setopt failed: %s\n", __FUNCTION__,curl_easy_strerror(res));
+		LOGD("curl_easy_setopt failed: %s\n",curl_easy_strerror(res));
 	}
 
 	/* set the url */
@@ -361,20 +385,21 @@ static int is_rcv_ok(void)
 	fclose(hfd);
 	sscanf(str, "HTTP/2 %d ", &ret);
 	if (ret == 200){
-		printf("%s ok...\n", __FUNCTION__);
+		LOGD("ok...\n");
 		return 1;
 	} else {
-		printf("%s %d ...\n", __FUNCTION__, ret);
+		LOGD("%d ...\n", ret);
 		return 0;
 	}
 }
 
 //int main(int argc, char **argv)
-void * upload_data_to_avs_thread(void * status)
+void * upload_data_to_avs_thread(void * pipFD)
 {
 	int ret = 0;
 	char token[1024];
 
+	pFD = (int *)pipFD;
 	/* the curl variable */
 	CURL *handles[HANDLECOUNT];
 	CURLM *multi_handle;
@@ -393,15 +418,15 @@ void * upload_data_to_avs_thread(void * status)
 	struct curl_slist *pingHead = NULL;
 	struct curl_slist *eventHead = NULL;
 
-	printf("1 curl_ver: %s\n", curl_version());
+	LOGD("1 curl_ver: %s\n", curl_version());
 	/* start */
 	get_access_token_file_from_avs();
         get_token_from_file(token,"token.txt");
-	//printf("\ntokenStr:%s\n", token);
+	LOGD("\ntokenStr:%s\n", token);
 
 	//strcat( Authorization, atoken );
 	strcat( Authorization, token);
-	printf( "\n%s\nstarting ...\n", Authorization );
+	LOGD( "\n%s\nstarting ...\n", Authorization );
 
 
 	/* initialize curl */
@@ -445,6 +470,7 @@ void * upload_data_to_avs_thread(void * status)
 		int maxfd = -1;
 
 		long curl_timeo = -1;
+                LOGD("-----------------netState: %d\n",netState);
 
 		switch (netState)
 		{
@@ -455,18 +481,18 @@ void * upload_data_to_avs_thread(void * status)
 				break;
 			case NET_STATE_SEND_STATE:
 			{
-				curl_sync_state(handles[EVENT_HANDLE], strJSONout, postFirst, postLast);
+				curl_sync_state(handles[EVENT_HANDLE], strJSONout, postFirst, postLast,pipFD);
 				curl_multi_add_handle(multi_handle, handles[EVENT_HANDLE]);
-				printf("start send the state ~~~~~~\n");
+				LOGD("start send the state ~~~~~~\n");
 				netState = NET_STATE_IDLE;
 			}
 				break;
 			case NET_STATE_SEND_EVENT:
 			{
 
-				curl_send_audio_content(handles[EVENT_HANDLE], strJSONout, postFirst, postLast);
+				curl_send_audio_content(handles[EVENT_HANDLE], strJSONout, postFirst, postLast, pipFD);
 				curl_multi_add_handle(multi_handle, handles[EVENT_HANDLE]);	
-				printf("start event ~~~~~~~~~~~~~\n");
+				LOGD("start event ~~~~~~~~~~~~~\n");
 				netState = NET_STATE_IDLE;
 				
 			}
@@ -524,7 +550,7 @@ void * upload_data_to_avs_thread(void * status)
 		switch(rc) {
 			case -1:
 				/* select error */
-				printf("~~~~~this is error~~~\n");
+				LOGE("~~~~~this is error~~~\n");
 				break;
 			case 0:
 			default:
@@ -535,23 +561,28 @@ void * upload_data_to_avs_thread(void * status)
 
 		/* See how the transfers went */
 		while((msg = curl_multi_info_read(multi_handle, &msgs_left))) {
+                        LOGD("-------------------curl_multi_info_read:%d\n", msg->msg);
+                        LOGD("-------------------msg->easy_handle:%d\n", msg->easy_handle);
 			if(msg->msg == CURLMSG_DONE) {
 				int idx, found = 0;
 
 				/* Find out which handle this message is about */
 				for(idx=0; idx<HANDLECOUNT; idx++) {
+                                        LOGD("===================msg->easy_handle:%d == handles[idx]:%s\n",(msg->easy_handle, handles[idx]));
 					found = (msg->easy_handle == handles[idx]);
-					if(found)
+					if(found){
+						LOGD("===================found: %d, handles[idx]: %d\n",found,handles[idx]);	
 						break;
+					}
 				}
 
 				switch(idx) {
 					case DOWN_HANDLE:
-						printf("Downstream completed with status %d\n", msg->data.result);
+						LOGD("Downstream completed with status %d\n", msg->data.result);
 						curl_multi_add_handle(multi_handle, handles[DOWN_HANDLE]);
 						break;
 					case PING_HANDLE:
-						printf("ping completed with status %d\n", msg->data.result);
+						LOGD("ping completed with status %d\n", msg->data.result);
 						/* after send the ping, then remove the handle */
 						curl_multi_remove_handle(multi_handle , handles[PING_HANDLE]);
 
@@ -560,19 +591,19 @@ void * upload_data_to_avs_thread(void * status)
 						netState = NET_STATE_SEND_EVENT;  // this is for 200 loop.
 						break;
 					case EVENT_HANDLE:
-						printf("event completed with status %d\n", msg->data.result);
+						LOGD("event completed with status %d\n", msg->data.result);
 						curl_multi_remove_handle(multi_handle , handles[EVENT_HANDLE]);
 						fclose(uploadFile);
 						fclose(saveHeadFile);
 						fclose(saveBodyFile);
 						if (!is_rcv_ok()){
-							printf("delete the mp3Ring...\n");
+							LOGD("delete the mp3Ring...\n");
 						}
 						free(strJSONout);
 						strJSONout = NULL;
 						curl_formfree( postFirst);
-						printf("-----finished count %d\n", count++);
-						printf("-----------end-----------\n");
+						LOGD("-----finished count %d\n", count++);
+						LOGD("-----------end-----------\n");
 						sleep(5);
 						netState = NET_STATE_SEND_EVENT; // go to send event again.
 						break;

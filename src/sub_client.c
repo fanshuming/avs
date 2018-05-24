@@ -78,7 +78,7 @@ void handle_emomo_sofa(char *type, char *subtype, char *data)
 
 		if(!strcmp(type, "7")) {
 			//handle_sofa_cmd(data);
-			printf("handle_sofa_cmd!\n");
+			LOGD("handle_sofa_cmd!\n");
 		} 
 		else
 		 {
@@ -124,7 +124,7 @@ static uint8_t handle_sub_msg_payload(char *msg_topic, char *msg_payload)
        tokenDestStr = (char *)get_token_topic();
        sofaDestStr = (char *)get_sofa_topic();
 
-	printf("topic : %s payload : %s\n",msg_topic,msg_payload);
+	LOGD("topic : %s payload : %s\n",msg_topic,msg_payload);
 
        	if(!strcmp(msg_topic, sofaDestStr))
 	{
@@ -177,7 +177,7 @@ static uint8_t handle_sub_msg_payload(char *msg_topic, char *msg_payload)
     		//	cJSON *json = cJSON_Parse(char_json);
 
     			char *buf = NULL;
-    			printf("%s\n",buf = cJSON_Print(sub_json_msg));
+    			LOGD("%s\n",buf = cJSON_Print(sub_json_msg));
     			FILE *fp = fopen("/etc/config/alexa.json","w");
     			fwrite(buf,strlen(buf),1,fp);
 
@@ -223,35 +223,35 @@ void my_message_callback(struct mosquitto *mosq, void *obj, const struct mosquit
 	if(strstr(message->payload,"stop sofa"))
 	{
 		sofa_send_nuber = 0;
-		printf("send cmd : stop sofa!\n");
+		LOGD("send cmd : stop sofa!\n");
 	}else if(strstr(message->payload,"reset sofa"))
 	{
 		sofa_send_nuber = 1;
-		printf("send cmd : reset sofa!\n");
+		LOGD("send cmd : reset sofa!\n");
 		
 	}else if(strstr(message->payload,"open sofa head"))
 	{
 		sofa_send_nuber = 8;
-		printf("send cmd : open sofa head!\n");
+		LOGD("send cmd : open sofa head!\n");
 	}else if(strstr(message->payload,"close sofa head"))
 	{
 		sofa_send_nuber = 16;
-		printf("send cmd : close sofa head!\n");
+		LOGD("send cmd : close sofa head!\n");
 	}
 	else if(strstr(message->payload,"open sofa"))
 	{
 		sofa_send_nuber = 2;
-		printf("send cmd : open sofa!\n");
+		LOGD("send cmd : open sofa!\n");
 	}else if(strstr(message->payload,"close sofa"))
 	{
 		sofa_send_nuber = 4;
-		printf("send cmd : close sofa!\n");
+		LOGD("send cmd : close sofa!\n");
 	}
 	
 	LOGD("msg playload = %s, payloadlen = %d\n", message->payload, message->payloadlen);
 	if(cfg->verbose){
 		if(message->payloadlen){
-			printf("%s ", message->topic);
+			LOGD("%s ", message->topic);
 			fwrite(message->payload, 1, message->payloadlen, stdout);
 			if(cfg->eol){
 				printf("\n");
@@ -270,7 +270,7 @@ void my_message_callback(struct mosquitto *mosq, void *obj, const struct mosquit
 			}
 		}else{
 			if(cfg->eol){
-				printf("%s (null)\n", message->topic);
+				LOGD("%s (null)\n", message->topic);
 			}
 		}
 		fflush(stdout);
@@ -278,7 +278,7 @@ void my_message_callback(struct mosquitto *mosq, void *obj, const struct mosquit
 		if(message->payloadlen){
 			fwrite(message->payload, 1, message->payloadlen, stdout);
 			if(cfg->eol){
-				printf("\n");
+				LOGD("\n");
 			}
 			fflush(stdout);
 			//send message by spi
@@ -331,16 +331,16 @@ void my_subscribe_callback(struct mosquitto *mosq, void *obj, int mid, int qos_c
 	assert(obj);
 	cfg = (struct mosq_config *)obj;
 
-	if(!cfg->quiet) printf("Subscribed (mid: %d): %d", mid, granted_qos[0]);
+	if(!cfg->quiet) LOGD("Subscribed (mid: %d): %d", mid, granted_qos[0]);
 	for(i=1; i<qos_count; i++){
-		if(!cfg->quiet) printf(", %d", granted_qos[i]);
+		if(!cfg->quiet) LOGD(", %d", granted_qos[i]);
 	}
-	if(!cfg->quiet) printf("\n");
+	if(!cfg->quiet) LOGD("\n");
 }
 
 void my_log_callback(struct mosquitto *mosq, void *obj, int level, const char *str)
 {
-	printf("%s\n", str);
+	LOGD("%s\n", str);
 }
 
 void print_usage(void)
@@ -438,7 +438,7 @@ void * mosq_sub_thread(void * status)
 	struct mosq_config cfg;
 	struct mosquitto *mosq = NULL;
 	int rc;
-	int argc=16;
+	int argc=20;
 	char *argv[] = {
 		"mosqutto_sub",
 		"-v",
@@ -455,7 +455,11 @@ void * mosq_sub_thread(void * status)
 		"-t",
 		"emomo_sofa",
 		"-h",
-		"120.27.138.117"
+		"120.27.138.117",
+		"-u",
+		"emomo",
+		"-p",
+		"$Y18H*P3IkMI"
 	};
         
 	

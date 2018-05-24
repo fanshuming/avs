@@ -58,6 +58,7 @@
 #include <semaphore.h>
 #include "utils.h"
 #include "log.h"
+#include "global.h"
 
 #ifdef SND_CHMAP_API_VERSION
 #define CONFIG_SUPPORT_CHMAP	1
@@ -160,7 +161,7 @@ static unsigned int *hw_map = NULL; /* chmap to follow */
 static void done_stdin(void);
 
 static void playback(char *filename);
-static void capture(char *filename);
+static void capture(char *filename, void * pipFD);
 static void playbackv(char **filenames, unsigned int count);
 static void capturev(char **filenames, unsigned int count);
 
@@ -438,13 +439,14 @@ enum {
  * record default args : -D plughw:1,0  -r 16000 -c 1 -t wav -f S16_LE awake.wav
  ****************************************************************/
 //int main(int argc, char *argv[])
-void * record_thread(void * status)
+void * record_thread(void * pipFD)
 {
 	int argc = 12;
 	char *argv[] = {
+		"arecord",
                 "-D",
                 "plughw:0,0",
-                "-t",
+                "-r",
                 "16000",
                 "-c",
                 "1",
@@ -516,6 +518,7 @@ void * record_thread(void * status)
 	setlocale(LC_ALL, "");
 	textdomain(PACKAGE);
 #endif
+	LOGD("Enter record thread\n");
 
 	snd_pcm_info_alloca(&info);
 
@@ -549,7 +552,9 @@ void * record_thread(void * status)
 	rhwparams.rate = DEFAULT_SPEED;
 	rhwparams.channels = 1;
 
+	LOGD("Enter record thread\n");
 	while ((c = getopt_long(argc, argv, short_options, long_options, &option_index)) != -1) {
+		LOGD("check arguments:%c\n", c);
 		switch (c) {
 		case 'h':
 			usage(command);
@@ -603,12 +608,14 @@ void * record_thread(void * status)
 				rhwparams.rate = 48000;
 				rhwparams.channels = 2;
 			} else {
+				LOGD("optarg: %s\n",optarg);
 				rhwparams.format = snd_pcm_format_value(optarg);
 				if (rhwparams.format == SND_PCM_FORMAT_UNKNOWN) {
 					error(_("wrong extended format '%s'"), optarg);
 					prg_exit(EXIT_FAILURE);
 				}
 			}
+			LOGD("optarg: %s\n",optarg);
 			break;
 		case 'r':
 			tmp = strtol(optarg, NULL, 0);
@@ -804,15 +811,22 @@ void * record_thread(void * status)
 	if (interleaved) {
 		if (optind > argc - 1) {
 			if (stream == SND_PCM_STREAM_PLAYBACK)
+			{
 				playback(NULL);
-			else
-				capture(NULL);
+			}
+			else{
+				LOGD("capture(NULL)");
+				capture(NULL, NULL);
+			}
 		} else {
 			while (optind <= argc - 1) {
 				if (stream == SND_PCM_STREAM_PLAYBACK)
+				{
 					playback(argv[optind++]);
-				else
-					capture(argv[optind++]);
+				}
+				else{
+					capture(argv[optind++],pipFD);
+				}
 			}
 		}
 	} else {
@@ -1372,6 +1386,7 @@ static void set_params(void)
 	bits_per_sample = snd_pcm_format_physical_width(hwparams.format);
 	bits_per_frame = bits_per_sample * hwparams.channels;
 	chunk_bytes = chunk_size * bits_per_frame / 8;
+	LOGD("chunk_bytes:%lld\n",chunk_bytes);
 	audiobuf = realloc(audiobuf, chunk_bytes);
 	if (audiobuf == NULL) {
 		error(_("not enough memory"));
@@ -2948,7 +2963,7 @@ static int safe_open(const char *name)
 	return fd;
 }
 
-static void capture(char *orig_name)
+static void capture(char *orig_name, void * pipFD)
 {
 	int tostdout=0;		/* boolean which describes output stream */
 	int filecount=0;	/* number of files written */
@@ -2958,6 +2973,7 @@ static void capture(char *orig_name)
 	
 	uint32_t ret = 0;
 
+	LOGD("Enter capture %s\n",name);
 	/* get number of bytes to capture */
 	count = calc_count();
 	if (count == 0)
@@ -2991,6 +3007,7 @@ static void capture(char *orig_name)
 
 	do {
 		/* open a file to write */
+		LOGD("save record data\n");
 		if(!tostdout) {
 			/* upon the second file we start the numbering scheme */
 			if (filecount || use_strftime) {
@@ -3022,19 +3039,29 @@ static void capture(char *orig_name)
 
 		/* capture */
 		fdcount = 0;
-		while (rest > 0 && recycle_capture_file == 0 && !in_aborting) {
+		LOGD("rest:%llu recycle_capture_file:%d in_aborting: %d\n",rest, recycle_capture_file, in_aborting);
+
+		ret = sem_wait(&sem_mic_wakeup);
+		if(ret != 0)
+		{
+			LOGE("sem_wait error, %d\n", ret);
+		}else{
+			stopCap = 0;
+		}
+
+		while (rest > 0 && recycle_capture_file == 0 && !in_aborting && !stopCap) {
 	
-			ret = sem_wait(&sem_mic_wakeup);
-			if(ret != 0)
-			{
-				LOGE("sem_wait error, %d\n", ret);
-				continue;
-			}
 			size_t c = (rest <= (off64_t)chunk_bytes) ?
 				(size_t)rest : chunk_bytes;
 			size_t f = c * 8 / bits_per_frame;
+			LOGD("rest:%llu, (off64_t)chunk_bytes:%llu, bits_per_frame:%d, f:%d\n",rest, (off64_t)chunk_bytes, bits_per_frame, f);
 			if (pcm_read(audiobuf, f) != f)
 				break;
+
+			LOGD("write fd = %d\n", *(int*)pipFD);  
+        		//char str[] = "hello everyone!";  
+       			write( *(int*)pipFD, audiobuf, c );
+
 			if (write(fd, audiobuf, c) != c) {
 				perror(name);
 				prg_exit(EXIT_FAILURE);
@@ -3062,6 +3089,7 @@ static void capture(char *orig_name)
 		/* repeat the loop when format is raw without timelimit or
 		 * requested counts of data are recorded
 		 */
+		LOGD(",file_type:%d, timelimit:%d\n",file_type, !timelimit);
 	} while ((file_type == FORMAT_RAW && !timelimit) || count > 0);
 }
 
@@ -3130,6 +3158,7 @@ static void capturev_go(int* fds, unsigned int channels, off64_t count, int rtyp
 
 	vsize = chunk_bytes / channels;
 
+	LOGD("Enter capturev_go\n");
 	for (channel = 0; channel < channels; ++channel)
 		bufs[channel] = audiobuf + vsize * channel;
 
@@ -3214,6 +3243,7 @@ static void capturev(char **names, unsigned int count)
 	unsigned int channels = rhwparams.channels;
 	int alloced = 0;
 	int fds[channels];
+	LOGD("ENTER capturev\n");
 	for (channel = 0; channel < channels; ++channel)
 		fds[channel] = -1;
 

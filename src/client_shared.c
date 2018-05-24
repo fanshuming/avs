@@ -32,6 +32,7 @@ Contributors:
 #include <mosquitto.h>
 #include "client_shared.h"
 
+#include "log.h"
 #define VERSION "1.4.10"
 
 static int mosquitto__parse_socks_url(struct mosq_config *cfg, char *url);
@@ -538,15 +539,15 @@ int client_config_line_proc(struct mosq_config *cfg, int pub_or_sub, int argc, c
 				if(!strcmp(argv[i+1],"system"))
 				{
 					argv[i+1]=systemMacTopicDestStr;
-					printf("---------debug system topic:%s\n",argv[i+1]);
+					LOGD("---------debug system topic:%s\n",argv[i+1]);
 				}else if(!strcmp(argv[i+1],"token"))
 				{
 					argv[i+1]=tokenTopicDestStr;
-					printf("---------debug token topic:%s\n",argv[i+1]);
+					LOGD("---------debug token topic:%s\n",argv[i+1]);
 				}else if(!strcmp(argv[i+1],"emomo_sofa"))
                                 {
                                         argv[i+1]=sofaTopicDestStr;
-                                        printf("---------debug sofa topic:%s\n",argv[i+1]);
+                                        LOGD("---------debug sofa topic:%s\n",argv[i+1]);
                                 }
 
 

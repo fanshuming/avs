@@ -65,6 +65,18 @@ int main(int argc, char * argv[])
 	pthread_t mosq_sub_thread_id;
 
 	spi_master_init();
+  
+        int fd[2];  
+        //char readbuf[1024];  
+  
+        if(pipe(fd) < 0)  
+        {  
+                printf("pipe error!\n");  
+        }  
+  
+        // read buf from child thread  
+        //read( fd[0], readbuf, sizeof(readbuf) );  
+        //printf("read buf = %s\n", readbuf); 
 
 	sem_wakeup_init();
 	sleep(2);
@@ -75,14 +87,16 @@ int main(int argc, char * argv[])
 	}
 
 	//record_thread();
-	if(pthread_create(&record_thread_id, NULL, record_thread, NULL) == -1) {
+	if(pthread_create(&record_thread_id, NULL, record_thread, &fd[1]) == -1) {
 		LOGE("create record thread error\n");
 	}
 	// upload data to avs thread
-	if(pthread_create(&upload_data_to_avs_thread_id, NULL, upload_data_to_avs_thread, NULL) == -1)
+
+	if(pthread_create(&upload_data_to_avs_thread_id, NULL, upload_data_to_avs_thread, &fd[0]) == -1)
 	{
 		LOGE("create upload data to alexa thread error\n");
 	}
+
 	//mosq sub thread
 	if(pthread_create(&mosq_sub_thread_id, NULL, mosq_sub_thread, NULL))
 	{

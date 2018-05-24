@@ -93,13 +93,17 @@ void mqtt_pub_json_msg(uint8_t *msg_topic, uint8_t *pub_msg_buffer)
     struct mosquitto *mosq = NULL;
     int rc;
     int rc2;
-    int argc=7;
-    char *argv[7] = {
+    int argc=11;
+    char *argv[11] = {
         "mosquto_pub",
         "-h",
         "120.27.138.117",
 		"-t",
 		"test_topic",
+	"-u",
+	"emomo",
+	"-p",
+	"$Y18H*P3IkMI",
         "-m",
         "helloworld"
     };
@@ -224,12 +228,12 @@ void mqtt_pub_msg_cjson(uint8_t *mqtt_topic, uint8_t *device_sn, uint8_t type, u
     	char *data = (char*)malloc(len + 1);
     	fread(data, 1, len, fp);
     	fclose(fp);
-    	printf("the alexa config data: %s", data);
+    	LOGD("the alexa config data: %s", data);
     	//解析JSON数据
     	cJSON *root_json = cJSON_Parse(data);    //将字符串解析成json结构体
     	if (NULL == root_json)
     	{
-        	printf("error:%s\n", cJSON_GetErrorPtr());
+        	LOGE("error:%s\n", cJSON_GetErrorPtr());
         	cJSON_Delete(root_json);
         	return;
     	}
@@ -240,8 +244,8 @@ void mqtt_pub_msg_cjson(uint8_t *mqtt_topic, uint8_t *device_sn, uint8_t type, u
     	cJSON *refreshToken_json = cJSON_GetObjectItem(root_json, "refreshToken");
 	if((token_json != NULL) && (refreshToken_json != NULL))
 	{
-		printf("get token: %s \n", token_json);
-		printf("get refresh token: %s\n",refreshToken_json);
+		LOGD("get token: %s \n", token_json);
+		LOGD("get refresh token: %s\n",refreshToken_json);
 		if((token_json->valuestring != NULL) && (refreshToken_json->valuestring != NULL))
 		{
 			cJSON_AddStringToObject(json_msg, "access_token", token_json->valuestring);

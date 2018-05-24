@@ -3,11 +3,12 @@
 #include "curl.h"
 #include "cJSON.h"
 #include <stdlib.h>
+#include "log.h"
 
 
 size_t write_token_data(void *ptr, size_t size, size_t nmemb, void *stream)
 {
-    printf("write token data begin...\n");
+    LOGD("write token data begin...\n");
     int written = fwrite(ptr, size, nmemb, (FILE *)stream);
     fflush((FILE *)stream);
     return written;
@@ -34,12 +35,12 @@ void get_access_token_file_from_avs(void)
         char *data = (char*)malloc(len + 1);
         fread(data, 1, len, fp);
         fclose(fp);
-        printf("the alexa config data: %s", data);
+        LOGD("the alexa config data: %s", data);
         //解析JSON数据
         cJSON *root_json = cJSON_Parse(data);    //将字符串解析成json结构体
         if (NULL == root_json)
         {
-                printf("error:%s\n", cJSON_GetErrorPtr());
+                LOGD("error:%s\n", cJSON_GetErrorPtr());
                 cJSON_Delete(root_json);
 		free(data);
                 return;
@@ -63,12 +64,12 @@ void get_access_token_file_from_avs(void)
                 }
               
         }else{
-		printf("token config file fail\n");
+		LOGD("token config file fail\n");
         }
 
-        printf("json_msg:%s\n",json_msg);
+        //LOGD("json_msg:%s\n",json_msg);
         msg_send_buffer = cJSON_PrintUnformatted(json_msg);
-        printf("msg_send_buffer:%s\n",msg_send_buffer);
+        //LOGD("msg_send_buffer:%s\n",msg_send_buffer);
 
 
 	CURL *m_curl = curl_easy_init();	
@@ -91,7 +92,7 @@ void get_access_token_file_from_avs(void)
 	result = curl_easy_perform(m_curl);
 
 	if (result != CURLE_OK){
-		printf("result:%d\n",result);
+		LOGE("result:%d\n",result);
 	}
 	fclose(fp);
 }
@@ -109,12 +110,12 @@ get_token_from_file(char * token, const char * tokenFile)
         char *data = (char*)malloc(len + 1);
         fread(data, 1, len, fp);
         fclose(fp);
-        printf("the token data: %s", data);
+        LOGD("the token data: %s", data);
         //解析JSON数据
         cJSON *root_json = cJSON_Parse(data);    //将字符串解析成json结构体
         if (NULL == root_json)
         {
-                printf("error:%s\n", cJSON_GetErrorPtr());
+                LOGE("error:%s\n", cJSON_GetErrorPtr());
                 cJSON_Delete(root_json);
                 free(data);
                 return;

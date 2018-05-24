@@ -84,7 +84,7 @@ int gpio_set_dir(unsigned int gpio, unsigned int out_flag)
 
     snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR  "/gpio%d/direction", gpio);
 
-    printf("the direction file:%s \n", buf);
+    LOGD("the direction file:%s \n", buf);
 
     fd = open(buf, O_WRONLY);
     if (fd < 0) {
@@ -223,16 +223,16 @@ void * microphone_wakeup_poll_thread(void * status)
 
     gpio = 11;//atoi(argv[1]);
 
-    printf("the gpio%d was export\n",gpio);
+    LOGD("the gpio%d was export\n",gpio);
     gpio_export(gpio);
 
-    printf("set gpio%d to input direction!\n",gpio);
+    LOGD("set gpio%d to input direction!\n",gpio);
     gpio_set_dir(gpio, 0);        //1 output
 
-    printf("set gpio%d to interrupt port!\n",gpio);
+    LOGD("set gpio%d to interrupt port!\n",gpio);
     gpio_set_edge(gpio, "rising");//both
 
-    printf("get the gpio%d value file fd!\n",gpio);
+    LOGD("get the gpio%d value file fd!\n",gpio);
     gpio_fd = gpio_fd_open(gpio);
 
     //timeout = POLL_TIMEOUT;
@@ -250,12 +250,12 @@ void * microphone_wakeup_poll_thread(void * status)
         ret = poll(fdset, nfds, timeout);
 
         if (ret < 0) {
-            printf("\npoll() failed!\n");
+            LOGE("\npoll() failed!\n");
             return;
         }
 
         if (ret == 0) {
-            printf(".");
+            LOGD(".");
         }
 
 		/* monitor interrupt */

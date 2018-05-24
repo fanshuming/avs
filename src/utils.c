@@ -59,14 +59,14 @@ int get_mac_addr(char *mac_addr)
 
 	int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
 	if (sock == -1) {
-		printf("socket error\n");
+		LOGE("socket error\n");
 		return -1;
 	}
 
 	ifc.ifc_len = sizeof(buf);
 	ifc.ifc_buf = buf;
 	if (ioctl(sock, SIOCGIFCONF, &ifc) == -1) {
-		printf("ioctl error\n");
+		LOGE("ioctl error\n");
 		return -1;
 	}
 
@@ -94,7 +94,7 @@ int get_mac_addr(char *mac_addr)
 				}
 			}
 		}else{
-			printf("get mac info error\n");
+			LOGE("get mac info error\n");
 			return -1;
 		}
 	}
@@ -106,13 +106,13 @@ char * get_system_mac_topic(void)
 	
 	if(strstr(sysTopic, ":") != NULL)
 	{	
-		printf("get_system_mac_topic:%s\n",sysTopic);	
+		LOGD("get_system_mac_topic:%s\n",sysTopic);	
 		return sysTopic;
 	}else{
         	get_mac_addr(mac_addr);
 		strcat(sysTopic, macAddr);
 
-		printf("get_system_mac_topic:%s\n",sysTopic);	
+		LOGD("get_system_mac_topic:%s\n",sysTopic);	
 		return sysTopic;
 	}
 }
@@ -123,13 +123,13 @@ char * get_token_topic(void)
 
         if(strstr(tokenTopic, ":") != NULL)
         {
-                printf("get_token_topic : %s\n",tokenTopic);
+                LOGD("get_token_topic : %s\n",tokenTopic);
                 return tokenTopic;
         }else{
                 get_mac_addr(mac_addr);
                 strcat(tokenTopic, macAddr);
 
-                printf("get_token_topic : %s\n",tokenTopic);
+                LOGD("get_token_topic : %s\n",tokenTopic);
                 return tokenTopic;
         }
 }
@@ -140,13 +140,13 @@ char * get_sofa_topic(void)
 
         if(strstr(sofaTopic, ":") != NULL)
         {
-                printf("get_sofa_topic : %s\n",sofaTopic);
+                LOGD("get_sofa_topic : %s\n",sofaTopic);
                 return sofaTopic;
         }else{
                 get_mac_addr(mac_addr);
                 strcat(sofaTopic, macAddr);
 
-                printf("get_sofa_topic : %s\n",sofaTopic);
+                LOGD("get_sofa_topic : %s\n",sofaTopic);
                 return sofaTopic;
         }
 }
@@ -179,10 +179,10 @@ int net_check(void)
     /*connect 函数*/
     while(1) {
         if(connect(fd, (struct sockaddr* )&servaddr, in_len) < 0) {
-            printf("not connect to internet!\n ");
+            LOGD("not connect to internet!\n ");
             continue;
         } else {
-            printf("=====connect ok!=====\n");
+            LOGD("=====connect ok!=====\n");
             close(fd);
             return 1;
         }
