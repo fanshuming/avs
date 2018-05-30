@@ -85,6 +85,10 @@
 #define FORMAT_WAVE		2
 #define FORMAT_AU		3
 
+
+char * shareAudioBuffer = NULL;
+//#define SHARE_AUDIO_BUFFER_SIZE 4096000
+
 /* global data */
 
 static snd_pcm_sframes_t (*readi_func)(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t size);
@@ -773,6 +777,7 @@ void * record_thread(void * pipFD)
 	hwparams = rhwparams;
 
 	audiobuf = (u_char *)malloc(1024);
+	shareAudioBuffer = (char *)malloc(4096000);
 	if (audiobuf == NULL) {
 		error(_("not enough memory"));
 		return;
@@ -3048,19 +3053,23 @@ static void capture(char *orig_name, void * pipFD)
 		}else{
 			stopCap = 0;
 		}
+		// add by I
+		unsigned long long copyPoint = 0;
 
-		while (rest > 0 && recycle_capture_file == 0 && !in_aborting && !stopCap) {
+		while (rest > 0 && recycle_capture_file == 0 && !in_aborting) {
 	
 			size_t c = (rest <= (off64_t)chunk_bytes) ?
 				(size_t)rest : chunk_bytes;
 			size_t f = c * 8 / bits_per_frame;
+			size_t pipSize = f * 8;
 			LOGD("rest:%llu, (off64_t)chunk_bytes:%llu, bits_per_frame:%d, f:%d\n",rest, (off64_t)chunk_bytes, bits_per_frame, f);
 			if (pcm_read(audiobuf, f) != f)
 				break;
 
 			LOGD("write fd = %d\n", *(int*)pipFD);  
         		//char str[] = "hello everyone!";  
-       			write( *(int*)pipFD, audiobuf, c );
+       			write( *(int*)pipFD, audiobuf, pipSize );
+
 
 			if (write(fd, audiobuf, c) != c) {
 				perror(name);

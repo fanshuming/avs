@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <stdim.h>
 #include <string.h>
 #include "curl.h"
 #include "cJSON.h"
@@ -22,8 +22,6 @@
 #define BODY_FILE_NAME       "./BodyFile"
 #define DEL_HTTPHEAD_EXPECT  "Expect:"
 #define DEL_HTTPHEAD_ACCEPT  "Accept:"
-
-int * pFD = NULL;
 
 unsigned int stopCap = 0;
 
@@ -91,6 +89,30 @@ size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)
 }
 
  
+static size_t read_callback(void *dest, size_t size, size_t nmemb, void *userp)
+{
+  struct WriteThis *wt = (struct WriteThis *)userp;
+  size_t buffer_size = size*nmemb;
+ 
+    LOGD("copy share mem data\n");
+  if(wt->sizeleft) {
+    /* copy as much as possible from the source to the destination */ 
+    	size_t copy_this_much = wt->sizeleft;
+    	if(copy_this_much > buffer_size)
+	{
+     		copy_this_much = buffer_size;
+	}
+    	memcpy(dest, wt->readptr, copy_this_much);
+ 
+    	wt->readptr += copy_this_much;
+   	wt->sizeleft -= copy_this_much;
+    	return copy_this_much; /* we copied this many bytes */ 
+  }else{
+ 	LOGD("no data \n");
+ 	 return 0; /* no more data left to deliver */ 
+	}
+}
+
 
 size_t readFileFunc(char *buffer, size_t size, size_t nitems, void *instream)
 {
@@ -103,8 +125,8 @@ size_t readFileFunc(char *buffer, size_t size, size_t nitems, void *instream)
 	}
 	
 
-//	int readSize = fread( buffer, size, nitems, (FILE *)instream );
-	int readSize = read(*(int *)pFD, buffer, nitems);
+	int readSize = fread( buffer, size, nitems, (FILE *)instream );
+//	int readSize = read(*(int *)pFD, buffer, nitems);
 	LOGD("buffer:%s, readSize:%d\n",buffer,readSize);
 
 	return readSize;
@@ -302,41 +324,28 @@ static void curl_send_audio_content(CURL *curl, char *strJSONout,
 	cJSON_Delete(root);
 	
 	LOGD("%s\n%ld\n", strJSONout, strlen(strJSONout));
-/*
-	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, strJSONout);
 
-	struct curl_slist *headers=NULL;
-	headers = curl_slist_append(headers, "Content-Disposition: form-data; name=\"metadata\"");
-	headers = curl_slist_append(headers, "application/json; charset=UTF-8");
+	/* formadd */
 
-	//set headers
-	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-*/
+			//============josn================//
+	curl_formadd(&postFirst, &postLast,
+				CURLFORM_COPYNAME, "metadata", /* CURLFORM_PTRCONTENTS, pAlexaJSON,  */
+				CURLFORM_COPYCONTENTS, strJSONout,
+				CURLFORM_CONTENTTYPE, "application/json; charset=UTF-8",
+				CURLFORM_END);
 
+			//=============Audio=================//
+	curl_formadd(&postFirst, &postLast,
+				CURLFORM_COPYNAME, "audio",
+				CURLFORM_STREAM, uploadFile,
+				//CURLFORM_CONTENTSLENGTH, uploadFileSize,
+				CURLFORM_CONTENTTYPE, "application/octet-stream", //"audio/L16; rate=16000; channels=1",
+				CURLFORM_END);
 
-
-        /* formadd */
-
-                        //============josn================//
-        curl_formadd(&postFirst, &postLast,
-                                CURLFORM_COPYNAME, "metadata", /* CURLFORM_PTRCONTENTS, pAlexaJSON,  */
-                                CURLFORM_COPYCONTENTS, strJSONout,
-                                CURLFORM_CONTENTTYPE, "application/json; charset=UTF-8",
-                                CURLFORM_END);
-
-                        //=============Audio=================//
-        curl_formadd(&postFirst, &postLast,
-                                CURLFORM_COPYNAME, "audio",
-                                CURLFORM_STREAM, uploadFile,
-                                //CURLFORM_CONTENTSLENGTH, uploadFileSize,
-                                CURLFORM_CONTENTTYPE, "application/octet-stream", //"audio/L16; rate=16000; channels=1",
-                                CURLFORM_END);
-
-
-
-
-	curl_easy_setopt(curl, CURLOPT_READFUNCTION, readFileFunc);
-	curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, write_data);  
+	curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
+	curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, &wt);  
+	//curl_easy_setopt(curl, CURLOPT_READFUNCTION, readFileFunc);
+	//curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, write_data);  
 	curl_easy_setopt(curl, CURLOPT_HEADERDATA, saveHeadFile);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);  
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, saveBodyFile);
@@ -428,7 +437,6 @@ void * upload_data_to_avs_thread(void * pipFD)
 {
 	int ret = 0;
 	char token[1024];
-	pFD = (int *)pipFD;
 
 	/* the curl variable */
 	CURL *handles[HANDLECOUNT];
